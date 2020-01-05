@@ -3,13 +3,14 @@
 
 import fileinput
 import sys
-from collections import namedtuple, Counter
+from collections import Counter
+from types import SimpleNamespace
 import re
 
 if len(sys.argv) == 1:
     sys.argv += ["input_07"]
 
-Program = namedtuple("Program", ["name", "weight", "parent", "children", "total_weight"])
+class Program(SimpleNamespace): pass
 
 def build_tree(lines):
     programs = {}
@@ -27,45 +28,44 @@ def build_tree(lines):
         if children_idx > 0:
             children = line[children_idx + 4:].split(", ")
         
-        t = programs.get(name, None)
-        if t != None:
-            programs[name] = t._replace(weight=weight, children=children)
-        else:
-            programs[name] = Program(name, weight, None, children, 0)
+        children = [programs.get(c, Program(name=c,parent=None)) for c in children]
+        
+        p = programs.get(name, Program(name=name,parent=None))
+        p.weight = weight
+        p.children = children
         
         for c in children:
-            t = programs.get(c, None)
-            if t != None:
-                programs[c] = t._replace(parent=name)
-            else:
-                programs[c] = Program(c, 0, name, [], 0)
+            c.parent = p
+            if not c.name in programs:
+                programs[c.name] = c
+        
+        programs[name] = p
     
-    return programs
+    root = p
+    while root.parent != None:
+        root = root.parent
+    
+    return root
 
-def rec_weight(programs, root_name):
-    t = programs[root_name]
-    w = t.weight
-    for c in t.children:
-        w += rec_weight(programs, c)
-    programs[root_name] = t._replace(total_weight = w)
+def rec_weight(root):
+    p = root
+    w = p.weight
+    for c in p.children:
+        w += rec_weight(c)
+    p.total_weight = w
     return w
 
 def work_p1(lines):
-    programs = build_tree(lines)
-    
-    root = next(p for p in programs.values() if p.parent == None)
+    root = build_tree(lines)
+
     return root
 
 def work_p2(lines):
-    programs = build_tree(lines)
-    
-    root = next(p for p in programs.values() if p.parent == None)
-    rec_weight(programs, root.name)
+    root = build_tree(lines)
+    rec_weight(root)
     
     def check_weights(n):
-        test_set = set()
-        for c_name in n.children:
-            test_set.add(programs[c_name].total_weight)
+        test_set = set(c.total_weight for c in n.children)
         if len(test_set) <= 1:
             return None
         else:
@@ -73,20 +73,20 @@ def work_p2(lines):
     
     def DFS(n):
         r = None
-        for c_name in n.children:
-            r = DFS(programs[c_name])
+        for c in n.children:
+            r = DFS(c)
             if r:
                 break
         if not r:
             r = check_weights(n)
         return r
-    
+
     culprit_parent = DFS(root)
     
-    candidate_weights = list(programs[c].total_weight for c in culprit_parent.children)
+    candidate_weights = [c.total_weight for c in culprit_parent.children]
     candidate_weights_counted = Counter(candidate_weights).most_common()
     delta_weight = candidate_weights_counted[1][0] - candidate_weights_counted[0][0]
-    return next(programs[c].weight - delta_weight for c in culprit_parent.children if programs[c].total_weight != candidate_weights_counted[0][0])
+    return next(c.weight - delta_weight for c in culprit_parent.children if c.total_weight != candidate_weights_counted[0][0])
     
 
 def test_p1():
