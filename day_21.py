@@ -65,20 +65,24 @@ def build_rules(lines):
 def apply_rules(art, rules):
     width = int(math.sqrt(len(art)))
     div_width = 2 if (width % 2) == 0 else 3
-    r_width = (width // div_width) * (div_width + 1)
+    r_div_width = div_width + 1
+    r_width = (width // div_width) * r_div_width
     new_art = [None] * (r_width * r_width)
     for Y in range(0, width, div_width):
         for X in range(0, width, div_width):
             subart = tuple()
             for y in range(div_width):
-                subart += art[(Y + y) * width + X: (Y + y) * width + X + div_width]
+                sy = (Y + y) * width + X
+                subart += art[sy : sy + div_width]
             
             replacement = rules[subart]
-            r_Y = (Y // div_width) * (div_width + 1)
-            r_X = (X // div_width) * (div_width + 1)
             
-            for y in range(div_width + 1):
-                new_art[(r_Y + y) * r_width + r_X : (r_Y + y) * r_width + r_X + (div_width + 1)] = replacement[y * (div_width + 1) : y * (div_width + 1) + (div_width + 1)]
+            r_Y = (Y // div_width) * r_div_width
+            r_X = (X // div_width) * r_div_width
+            for y in range(r_div_width):
+                sy = (r_Y + y) * r_width + r_X
+                sy_ = y * r_div_width
+                new_art[sy : sy + r_div_width] = replacement[sy_ : sy_ + r_div_width]
     
     return tuple(new_art)
     
